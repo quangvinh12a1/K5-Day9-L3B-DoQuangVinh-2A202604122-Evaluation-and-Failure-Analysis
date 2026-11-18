@@ -108,7 +108,23 @@ def build_v2(items_v1: Path = ITEMS, labels_v1: Path = LABELS, pack: Path = PACK
     base = load_jsonl(items_v1)
     labels = json.loads(labels_v1.read_text(encoding="utf-8"))
     p = json.loads(pack.read_text(encoding="utf-8"))
-    items = [{**it, "eval_set_version": "v2", "slices": slices_for(labels[it["claim_id"]], False)} for it in base]
+    # Add the sibling-refund FM to every public claim sharing an order with another claim.
+    # This is grounded in the source data (not the agent output) and supplies enough cases
+    # to evaluate the sibling-side-effect failure mode in v2.
+    source_claims = load_jsonl(SOURCE)
+    order_counts: dict[str, int] = {}
+    for claim in source_claims:
+        if claim.get("order_id"):
+            order_counts[claim["order_id"]] = order_counts.get(claim["order_id"], 0) + 1
+    sibling_claims = {c["claim_id"] for c in source_claims
+                      if c.get("order_id") and order_counts[c["order_id"]] > 1}
+    items = []
+    for it in base:
+        modes = list(it["failure_modes"])
+        if it["claim_id"] in sibling_claims and "FM-07" not in modes:
+            modes.append("FM-07")
+        items.append({**it, "failure_modes": modes, "eval_set_version": "v2",
+                      "slices": slices_for(labels[it["claim_id"]], False)})
     for claim in p["claims"]:
         items.append({
             "item_id": f"E-{claim['claim_id'][2:]}",   # C-105 -> E-105

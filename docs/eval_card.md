@@ -19,3 +19,12 @@ Card này đi kèm mỗi báo cáo và được dùng lại ở Day 10.
 - **Phạm vi pilot:** đánh giá offline các yêu cầu hoàn tiền LogiX-VN trên public claims; chưa triển khai cho người dùng.
 - **Giới hạn / bằng chứng còn thiếu:** MockLLM, 14 item, judge replay; không đo trên người dùng thật
 - **Khi nào tăng eval-set version:** thêm/bớt item hoặc đổi nhãn/provenance thì tăng version, tính SHA mới và sinh baseline mới; không sửa report bằng tay.
+
+## Bổ sung M5–M7 (eval set v2)
+
+- **Eval set v2:** 28 item (14 public + 14 adversarial) × 5 seed; SHA `dc16d0af2964`; `evalset --v2` sạch. Mapping cơ chế tấn công nằm trong `src/config/fm_map.yaml`; các order có sibling được gắn thêm FM-07 dựa trên dữ liệu claim nguồn. V2 có ≥3 item tổng cho mỗi mode bị tấn công; FM-09 có 3 adversarial item C-110/C-113/C-114.
+- **Baseline:** `E-swarm-20261118-dc16`; `pass_hat_5=0.8929`, `pass_rate=0.9786`, `refund_amount_correct=0.9786`, `reply_amount_correct=1.0`.
+- **A/A:** cùng swarm trên seeds 11/22/33/44/55 và 66/77/88/99/110 cho Δ=0.0000 ở mọi metric, bao gồm `pass_hat_5`. Chọn sàn blocking `pass_hat_5≥0.85`, thấp hơn baseline 0.0429 và cao hơn sàn rubric 0.80; scorecard xác nhận `flaky_regression` bị chặn.
+- **Slice gate:** `money_movement/pass_rate≥0.95`, `adversarial/pass_rate≥0.90`, `denial/pass_rate≥0.90`, đều blocking và kiểm tra paired drop. `slice_regression` có tổng pass_rate 0.9357 nhưng money_movement chỉ 0.85 nên bị chặn đúng ở slice đó.
+- **Mutation scorecard:** `fixed` và `honest_refactor` merge; `seeded_regression`, `slice_regression`, `flaky_regression` block; false alarm 0. Public trap `evaluator_errors_as_nan`, `dropped_failing_rows`, `cherry_picked_seeds`, `loosened_spec` đều bị integrity gate chặn. Baseline so với chính nó merge.
+- **Giới hạn:** 5 seed không phát hiện ổn định bug chỉ xảy ra ở 1/3 seed; kết quả trên là MockLLM và public/adversarial pack hiện có, cần tăng seed và bổ sung hidden/production trace trước pilot.

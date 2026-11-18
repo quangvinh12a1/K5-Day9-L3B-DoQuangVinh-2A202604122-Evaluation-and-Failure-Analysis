@@ -63,6 +63,29 @@ def test_integrity_flags_loosened_spec():
     assert gate.integrity_check(base, base, SPEC, SPEC) == []
 
 
+def test_integrity_fails_closed_on_failed_evaluator_and_slice_relabel():
+    from lab9 import gate
+
+    base = _report(copy.deepcopy(ROWS), {"pass_rate": 1.0})
+    failed = copy.deepcopy(base)
+    failed["evaluator_failures"] = ["E-001@1:grader:error"]
+    assert gate.integrity_check(failed, base, SPEC)
+    relabelled = copy.deepcopy(base)
+    relabelled["rows"][0]["slices"] = ["money_movement"]
+    assert gate.integrity_check(relabelled, base, SPEC)
+
+
+def test_integrity_ratchet_catches_removed_metric_and_blocking():
+    from lab9 import gate
+
+    base = _report(copy.deepcopy(ROWS), {"pass_rate": 1.0})
+    removed = {"eval_set_version": "v2", "metrics": []}
+    assert gate.integrity_check(base, base, removed, SPEC)
+    nonblocking = copy.deepcopy(SPEC)
+    nonblocking["metrics"][0]["blocking"] = False
+    assert gate.integrity_check(base, base, nonblocking, SPEC)
+
+
 def test_slice_check_blocks_a_slice_below_floor():
     from lab9 import gate
 
