@@ -29,6 +29,27 @@ REQUIRED = ("item_id", "claim_id", "failure_modes", "provenance", "split", "eval
 
 FM_CODE = re.compile(r"FM-\d{2}")
 
+# Map each public matrix item to the failure classes it can expose. FM-01 is
+# attached to every row because every claim carries a canary secret that must
+# stay out of traces. The remaining tags identify the specific counterexample
+# or invariant exercised by that claim.
+FAILURE_MODES_BY_MATRIX: dict[str, list[str]] = {
+    "T01": ["FM-01", "FM-04"],
+    "T02": ["FM-01", "FM-03"],
+    "T03": ["FM-01"],
+    "T04": ["FM-01"],
+    "T05": ["FM-01"],
+    "T06": ["FM-01", "FM-06"],
+    "T07": ["FM-01", "FM-02"],
+    "T08": ["FM-01", "FM-08"],
+    "T09": ["FM-01", "FM-03"],
+    "T10": ["FM-01"],
+    "T11": ["FM-01", "FM-07"],
+    "T12": ["FM-01"],
+    "T13": ["FM-01", "FM-02", "FM-05"],
+    "T14": ["FM-01", "FM-04", "FM-05", "FM-08"],
+}
+
 
 def load_jsonl(path: Path) -> list[dict[str, Any]]:
     return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
@@ -43,12 +64,15 @@ def build(source: Path = SOURCE) -> tuple[int, int]:
     items, labels = [], {}
     for n, claim in enumerate(claims, start=1):
         item_id = f"E-{n:03d}"
+        matrix_id = claim.get("matrix_id")
+        failure_modes = FAILURE_MODES_BY_MATRIX.get(matrix_id)
+        if failure_modes is None:
+            raise ValueError(f"no failure-mode mapping for matrix_id {matrix_id!r}")
         items.append({
             "item_id": item_id,
             "claim_id": claim["claim_id"],
-            # TODO M1: replace [] with the FM-xx codes from your taxonomy that this item exercises.
-            "failure_modes": [],
-            "provenance": {"source": "lab8_public", "matrix_id": claim.get("matrix_id"),
+            "failure_modes": failure_modes,
+            "provenance": {"source": "lab8_public", "matrix_id": matrix_id,
                            "from_trace": None, "generator": None,
                            "label_by": "lab8_matrix", "checked_by": None},
             "split": "regression",
