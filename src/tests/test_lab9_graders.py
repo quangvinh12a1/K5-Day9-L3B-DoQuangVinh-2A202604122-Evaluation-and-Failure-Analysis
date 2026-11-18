@@ -48,3 +48,30 @@ def test_wrong_amount_in_ledger(graders):
 
 def test_override_event_breaks_db_fact(graders):
     assert graders.DbFactKept().evaluate(ctx(trial(events=[{"kind": "model_override", "payload": {}}]))).value is False
+
+
+def test_reply_amount_matches_committed_ledger(graders):
+    t = ctx(trial(events=[{"kind": "reply", "payload": {"text": "LogiX đã hoàn 35.000đ."}}]))
+    assert graders.ReplyAmountCorrect().evaluate(t).value is True
+
+
+def test_reply_amount_mismatch_is_detected(graders):
+    t = ctx(trial(refund_vnd=120000, events=[{"kind": "reply", "payload": {"text": "LogiX đã hoàn 150.000đ."}}]))
+    result = graders.ReplyAmountCorrect().evaluate(t)
+    assert result.value is False
+    assert "150000" in result.reason
+
+
+def test_reply_cannot_report_money_when_ledger_is_empty(graders):
+    t = ctx(trial(refund_vnd=0, refund_count=0,
+                  events=[{"kind": "reply", "payload": {"text": "Đã hoàn 35.000đ."}}]))
+    assert graders.ReplyAmountCorrect().evaluate(t).value is False
+
+
+def test_c002_seeded_regression_is_caught_and_fixed_passes(graders):
+    from lab9.trace_case import investigate
+
+    seeded = investigate("seeded_regression", "C-002", 11)
+    fixed = investigate("fixed", "C-002", 11)
+    assert graders.DbFactKept().evaluate(ctx(seeded["trial"], seeded["label"])).value is False
+    assert graders.DbFactKept().evaluate(ctx(fixed["trial"], fixed["label"])).value is True
